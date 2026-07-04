@@ -26,10 +26,10 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
   // Load original image
   useEffect(() => {
     let url = '';
-    if (file.file) {
-      url = URL.createObjectURL(file.file);
-    } else if (file.convertedBlob) {
+    if (file.status === 'success' && file.convertedBlob) {
       url = URL.createObjectURL(file.convertedBlob);
+    } else if (file.file) {
+      url = URL.createObjectURL(file.file);
     }
     
     if (url) {
@@ -195,7 +195,11 @@ export const ImageEditModal: React.FC<ImageEditModalProps> = ({
             <Sparkles className="w-5 h-5 text-indigo-500" style={{ color: 'var(--primary)' }} />
             <div>
               <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>Image Quality Enhancer</h2>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>File: {file.name} ({originalMeta.w}x{originalMeta.h} px)</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                File: {file.status === 'success' && file.convertedBlob 
+                  ? `${file.name.substring(0, file.name.lastIndexOf('.')) || file.name}.${file.targetExtension}`
+                  : file.name} ({originalMeta.w}x{originalMeta.h} px)
+              </span>
             </div>
           </div>
           <button 

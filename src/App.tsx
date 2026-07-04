@@ -368,9 +368,11 @@ function App() {
     }));
   };
 
-  const applyBatchQuality = (category: string, quality: number) => {
+  const applyBatchQuality = (category: string, quality: number, targetFileIds?: string[]) => {
     setFiles(prev => prev.map(f => {
-      if (f.category === category && f.targetExtension === 'webp') {
+      const matchesCategory = f.category === category;
+      const matchesSelection = targetFileIds ? targetFileIds.includes(f.id) : true;
+      if (matchesCategory && matchesSelection && f.targetExtension === 'webp') {
         return {
           ...f,
           quality: quality,
@@ -384,16 +386,24 @@ function App() {
     }));
   };
 
-  const applyBatchTarget = (category: string, ext: string) => {
-    setFiles(prev => prev.map(f => f.category === category ? { 
-      ...f, 
-      targetExtension: ext,
-      status: 'idle',
-      progress: 0,
-      convertedBlob: undefined,
-      errorMessage: undefined
-    } : f));
-    showToast(`Applied .${ext.toUpperCase()} format to all ${category}s.`, 'info');
+  const applyBatchTarget = (category: string, ext: string, targetFileIds?: string[]) => {
+    setFiles(prev => prev.map(f => {
+      const matchesCategory = f.category === category;
+      const matchesSelection = targetFileIds ? targetFileIds.includes(f.id) : true;
+      if (matchesCategory && matchesSelection) {
+        return { 
+          ...f, 
+          targetExtension: ext,
+          status: 'idle',
+          progress: 0,
+          convertedBlob: undefined,
+          errorMessage: undefined
+        };
+      }
+      return f;
+    }));
+    const scope = targetFileIds ? 'selected' : 'all';
+    showToast(`Applied .${ext.toUpperCase()} format to ${scope} ${category}s.`, 'info');
   };
 
   const toggleSelectFile = (id: string) => {
@@ -420,40 +430,55 @@ function App() {
     showToast('Selected files deleted.', 'info');
   };
 
-  const renameFiles = (findText: string, replaceText: string) => {
+  const renameFiles = (findText: string, replaceText: string, targetFileIds?: string[]) => {
     setFiles(prev => prev.map(f => {
-      const nameParts = f.name.split('.');
-      const ext = nameParts.pop() || '';
-      const baseName = nameParts.join('.');
-      const newBaseName = baseName.split(findText).join(replaceText);
-      return { ...f, name: `${newBaseName}.${ext}` };
-    }));
-    showToast('Batch filename rename applied.', 'success');
-  };
-
-  const resetFilenames = (pattern: string) => {
-    setFiles(prev => prev.map((f, index) => {
-      const nameParts = f.name.split('.');
-      const ext = nameParts.pop() || '';
-      const numStr = String(index + 1).padStart(2, '0');
-      let newBaseName = '';
-      if (!pattern || pattern.trim() === '') {
-        newBaseName = String(index + 1);
-      } else {
-        if (pattern.includes('{number}')) {
-          newBaseName = pattern.split('{number}').join(numStr);
-        } else {
-          newBaseName = `${pattern}-${numStr}`;
-        }
+      const matchesSelection = targetFileIds ? targetFileIds.includes(f.id) : true;
+      if (matchesSelection) {
+        const nameParts = f.name.split('.');
+        const ext = nameParts.pop() || '';
+        const baseName = nameParts.join('.');
+        const newBaseName = baseName.split(findText).join(replaceText);
+        return { ...f, name: `${newBaseName}.${ext}` };
       }
-      return { ...f, name: `${newBaseName}.${ext}` };
+      return f;
     }));
-    showToast('Sequential filenames applied.', 'success');
+    const scope = targetFileIds ? 'selection' : 'workspace';
+    showToast(`Batch filename rename applied to ${scope}.`, 'success');
   };
 
-  const applyImageResize = (scale?: number, width?: number, height?: number) => {
+  const resetFilenames = (pattern: string, targetFileIds?: string[]) => {
+    let indexOffset = 0;
+    setFiles(prev => prev.map((f) => {
+      const matchesSelection = targetFileIds ? targetFileIds.includes(f.id) : true;
+      if (matchesSelection) {
+        const nameParts = f.name.split('.');
+        const ext = nameParts.pop() || '';
+        const numStr = String(indexOffset + 1).padStart(2, '0');
+        indexOffset++;
+        
+        let newBaseName = '';
+        if (!pattern || pattern.trim() === '') {
+          newBaseName = String(indexOffset);
+        } else {
+          if (pattern.includes('{number}')) {
+            newBaseName = pattern.split('{number}').join(numStr);
+          } else {
+            newBaseName = `${pattern}-${numStr}`;
+          }
+        }
+        return { ...f, name: `${newBaseName}.${ext}` };
+      }
+      return f;
+    }));
+    const scope = targetFileIds ? 'selection' : 'workspace';
+    showToast(`Sequential filenames applied to ${scope}.`, 'success');
+  };
+
+  const applyImageResize = (scale?: number, width?: number, height?: number, targetFileIds?: string[]) => {
     setFiles(prev => prev.map(f => {
-      if (f.category === 'image') {
+      const matchesCategory = f.category === 'image';
+      const matchesSelection = targetFileIds ? targetFileIds.includes(f.id) : true;
+      if (matchesCategory && matchesSelection) {
         return {
           ...f,
           resizeScale: scale,
@@ -463,12 +488,15 @@ function App() {
       }
       return f;
     }));
-    showToast('Image resize parameters applied in batch.', 'info');
+    const scope = targetFileIds ? 'selection' : 'batch';
+    showToast(`Image resize parameters applied to ${scope}.`, 'info');
   };
 
-  const applyTextMode = (mode: 'none' | 'minify' | 'format') => {
+  const applyTextMode = (mode: 'none' | 'minify' | 'format', targetFileIds?: string[]) => {
     setFiles(prev => prev.map(f => {
-      if (f.category === 'text' || f.category === 'document') {
+      const matchesCategory = f.category === 'text' || f.category === 'document';
+      const matchesSelection = targetFileIds ? targetFileIds.includes(f.id) : true;
+      if (matchesCategory && matchesSelection) {
         return {
           ...f,
           textMode: mode
@@ -476,7 +504,8 @@ function App() {
       }
       return f;
     }));
-    showToast(`Text formatting mode set to: ${mode}.`, 'info');
+    const scope = targetFileIds ? 'selection' : 'batch';
+    showToast(`Text formatting mode applied to ${scope}.`, 'info');
   };
 
   // Convert a single file logic
@@ -851,6 +880,7 @@ function App() {
             {/* Batch Controls Component */}
             <BatchControls 
               files={files}
+              selectedFileIds={selectedFileIds}
               activeTab={activeTab}
               onApplyBatchTarget={applyBatchTarget}
               onApplyBatchQuality={applyBatchQuality}

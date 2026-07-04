@@ -4,13 +4,14 @@ import type { ConvertedFile } from '../types';
 
 interface BatchControlsProps {
   files: ConvertedFile[];
+  selectedFileIds: string[];
   activeTab: string;
   onApplyBatchTarget: (category: string, ext: string) => void;
   onApplyBatchQuality: (category: string, quality: number) => void;
-  onRenameFiles: (findText: string, replaceText: string) => void;
-  onResetFilenames: (pattern: string) => void;
-  onApplyImageResize: (scale?: number, width?: number, height?: number) => void;
-  onApplyTextMode: (mode: 'none' | 'minify' | 'format') => void;
+  onRenameFiles: (findText: string, replaceText: string, targetFileIds?: string[]) => void;
+  onResetFilenames: (pattern: string, targetFileIds?: string[]) => void;
+  onApplyImageResize: (scale?: number, width?: number, height?: number, targetFileIds?: string[]) => void;
+  onApplyTextMode: (mode: 'none' | 'minify' | 'format', targetFileIds?: string[]) => void;
   isConverting: boolean;
 }
 
@@ -100,6 +101,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({ value, options, onCh
 
 export const BatchControls: React.FC<BatchControlsProps> = ({
   files,
+  selectedFileIds,
   activeTab,
   onApplyBatchTarget,
   onApplyBatchQuality,
@@ -163,9 +165,9 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
     }
   };
 
-  const handleRenameSubmit = () => {
+  const handleRenameSubmit = (applyToSelection: boolean) => {
     if (findText.trim() !== '') {
-      onRenameFiles(findText, replaceText);
+      onRenameFiles(findText, replaceText, applyToSelection ? selectedFileIds : undefined);
       const entry = { find: findText, replace: replaceText };
       const updated = [entry, ...renameHistory.filter(h => h.find !== findText)].slice(0, 5);
       setRenameHistory(updated);
@@ -176,8 +178,8 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
     }
   };
 
-  const handleResetSubmit = () => {
-    onResetFilenames(resetPattern);
+  const handleResetSubmit = (applyToSelection: boolean) => {
+    onResetFilenames(resetPattern, applyToSelection ? selectedFileIds : undefined);
     if (resetPattern.trim() !== '') {
       const updated = [resetPattern, ...resetHistory.filter(h => h !== resetPattern)].slice(0, 5);
       setResetHistory(updated);
@@ -187,21 +189,22 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
     setActiveAction('none');
   };
 
-  const handleResizeSubmit = () => {
+  const handleResizeSubmit = (applyToSelection: boolean) => {
     const val = resizeWidth ? parseInt(resizeWidth) : undefined;
     const s = resizeScale ? parseFloat(resizeScale) : undefined;
+    const targets = applyToSelection ? selectedFileIds : undefined;
     if (resizeDimension === 'width') {
-      onApplyImageResize(s, val, undefined);
+      onApplyImageResize(s, val, undefined, targets);
     } else {
-      onApplyImageResize(s, undefined, val);
+      onApplyImageResize(s, undefined, val, targets);
     }
     setResizeWidth('');
     setResizeScale('1.0');
     setActiveAction('none');
   };
 
-  const handleTextModeSubmit = () => {
-    onApplyTextMode(textModeSetting);
+  const handleTextModeSubmit = (applyToSelection: boolean) => {
+    onApplyTextMode(textModeSetting, applyToSelection ? selectedFileIds : undefined);
     setActiveAction('none');
   };
 
@@ -349,14 +352,35 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
                 onChange={(e) => setReplaceText(e.target.value)}
                 className="rename-input"
               />
-              <button
-                onClick={handleRenameSubmit}
-                disabled={findText.trim() === ''}
-                className="btn btn-primary"
-                style={{ padding: '0.5rem 1.25rem' }}
-              >
-                Apply
-              </button>
+              {selectedFileIds.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleRenameSubmit(false)}
+                    disabled={findText.trim() === ''}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Apply to All
+                  </button>
+                  <button
+                    onClick={() => handleRenameSubmit(true)}
+                    disabled={findText.trim() === ''}
+                    className="btn btn-primary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Apply to Selected ({selectedFileIds.length})
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleRenameSubmit(false)}
+                  disabled={findText.trim() === ''}
+                  className="btn btn-primary"
+                  style={{ padding: '0.5rem 1.25rem' }}
+                >
+                  Apply
+                </button>
+              )}
             </div>
             {renameHistory.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginTop: '0.25rem' }}>
@@ -402,13 +426,32 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
                 className="rename-input"
                 style={{ minWidth: '320px' }}
               />
-              <button
-                onClick={handleResetSubmit}
-                className="btn btn-primary"
-                style={{ padding: '0.5rem 1.25rem' }}
-              >
-                Apply Reset
-              </button>
+              {selectedFileIds.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleResetSubmit(false)}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Reset All
+                  </button>
+                  <button
+                    onClick={() => handleResetSubmit(true)}
+                    className="btn btn-primary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Reset Selected ({selectedFileIds.length})
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleResetSubmit(false)}
+                  className="btn btn-primary"
+                  style={{ padding: '0.5rem 1.25rem' }}
+                >
+                  Apply Reset
+                </button>
+              )}
             </div>
             {resetHistory.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginTop: '0.25rem' }}>
@@ -494,13 +537,32 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
                 />
               </div>
 
-              <button
-                onClick={handleResizeSubmit}
-                className="btn btn-primary"
-                style={{ padding: '0.5rem 1.25rem' }}
-              >
-                Apply Resize
-              </button>
+              {selectedFileIds.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleResizeSubmit(false)}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Resize All
+                  </button>
+                  <button
+                    onClick={() => handleResizeSubmit(true)}
+                    className="btn btn-primary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Resize Selected ({selectedFileIds.length})
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleResizeSubmit(false)}
+                  className="btn btn-primary"
+                  style={{ padding: '0.5rem 1.25rem' }}
+                >
+                  Apply Resize
+                </button>
+              )}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
               ℹ️ Resizing is applied client-side using Canvas rendering. Aspect ratio is preserved automatically.
@@ -535,13 +597,32 @@ export const BatchControls: React.FC<BatchControlsProps> = ({
                   onChange={(val) => setTextModeSetting(val as any)}
                 />
               </div>
-              <button
-                onClick={handleTextModeSubmit}
-                className="btn btn-primary"
-                style={{ padding: '0.5rem 1.25rem' }}
-              >
-                Apply Formatting
-              </button>
+              {selectedFileIds.length > 0 ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleTextModeSubmit(false)}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Format All
+                  </button>
+                  <button
+                    onClick={() => handleTextModeSubmit(true)}
+                    className="btn btn-primary"
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Format Selected ({selectedFileIds.length})
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleTextModeSubmit(false)}
+                  className="btn btn-primary"
+                  style={{ padding: '0.5rem 1.25rem' }}
+                >
+                  Apply Formatting
+                </button>
+              )}
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
               ℹ️ Applied to structured data files (JSON, CSV, HTML, XML, Markdown) before rendering. Minify strips formatting to reduce size, Beautify adds clean spacing.
